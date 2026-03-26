@@ -1,0 +1,106 @@
+package com.yellobook.mention.domain.member.entity;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+
+import com.yellobook.mention.common.BaseEntity;
+
+@Entity
+@Table(name = "members",
+        indexes = {
+                @Index(name = "ix_members_email", columnList = "email")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uc_members_email", columnNames = "email")
+        }
+)
+@SQLDelete(sql = "UPDATE members SET is_deleted = true, deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@Where(clause = "is_deleted = false")
+public class MemberEntity extends BaseEntity {
+    @Column(nullable = false, length = 20)
+    private String nickname;
+
+    private String bio;
+
+    private String profileImage;
+
+    private String oauthId;
+
+    private String oauthProvider;
+
+    @Column(nullable = false)
+    private String email;
+
+    @Column(nullable = false)
+    private boolean isDeleted = false;
+
+    private LocalDateTime nicknameUpdatedAt;
+
+    private LocalDateTime deletedAt;
+
+    protected MemberEntity() {
+    }
+
+    public MemberEntity(String nickname, String bio, String email, String profileImage, String oauthId,
+                        String oauthProvider) {
+        this.nickname = nickname;
+        this.bio = bio;
+        this.email = email;
+        this.profileImage = profileImage;
+        this.oauthId = oauthId;
+        this.oauthProvider = oauthProvider;
+    }
+
+    public void updateNickname(String nickname) {
+        this.nickname = nickname;
+        this.nicknameUpdatedAt = LocalDateTime.now();
+    }
+
+    public void updateBio(String bio) {
+        this.bio = bio;
+    }
+
+    public String getNickname() {
+        return nickname;
+    }
+
+    public String getBio() {
+        return bio;
+    }
+
+    public String getProfileImage() {
+        return profileImage;
+    }
+
+    public String getOauthId() {
+        return oauthId;
+    }
+
+    public String getOauthProvider() {
+        return oauthProvider;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public LocalDateTime getNicknameUpdatedAt() {
+        return nicknameUpdatedAt;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+}
