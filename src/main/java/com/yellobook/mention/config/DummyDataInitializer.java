@@ -38,66 +38,91 @@ public class DummyDataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        // 이미 데이터가 있다면 실행하지 않음
-        if (memberRepository.count() > 0) {
-            log.info("이미 더미 데이터가 존재하여 초기화를 건너뜁니다.");
+        // 이미 데이터가 있다면 실행하지 않음 (팀 기준으로 체크)
+        if (teamRepository.count() > 0) {
+            log.info("이미 더미 데이터가 존재하여 초기화를 건너뜁니다. (다시 세팅하려면 DB를 비워주세요!)");
             return;
         }
 
-        log.info("더미 데이터 삽입을 시작합니다...");
+        log.info("🔥 지옥의 트래픽 시뮬레이션을 위한 '데이터 쏠림(Mega Team)' 더미 삽입을 시작합니다...");
         long startTime = System.currentTimeMillis();
 
-        // 1. 테스트용 팀 생성
-        TeamEntity team = new TeamEntity(
-                "mention 테스트팀",
-                "멘션 기능 테스트를 위한 팀입니다.",
-                "010-1234-5678",
-                "경기도 안양시",
-                true
-        );
-        teamRepository.save(team);
+        // 1. 1,000개의 팀 생성 (메모리상에 리스트로 보관)
+        List<TeamEntity> teams = new ArrayList<>();
+        for (int i = 1; i <= 1000; i++) {
+            TeamEntity team = new TeamEntity(
+                    "mention 테스트팀 " + i,
+                    i + "번 멘션 기능 테스트 팀입니다.",
+                    "010-1234-5678",
+                    "경기도 안양시",
+                    true
+            );
+            teams.add(team);
+        }
+        // DB에 1,000개 팀 먼저 일괄 저장
+        teamRepository.saveAll(teams);
 
-        // 2. 10000명의 랜덤 유저 및 팀 참여(Participant) 데이터 생성
-        String[] lastNames = {"김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "설", "고", "피", "남궁", "유"}; //20개
-        String[] firstNames = {"민준", "서연", "도윤", "서윤", "시우", "지우", "지호", "하은",
-                "지훈", "지아", "길동", "철수", "영희", "진호", "희찬", "지한", "주은", "주찬", "시온","소여", "지민"}; //21개
+        // 2. 이름 풀 세팅
+        String[] lastNames = {"김", "이", "박", "최", "정", "강", "조", "윤", "장", "임", "한", "오", "서", "신", "권", "설", "고", "피", "남궁", "유"};
+        String[] firstNames = {"민준", "서연", "도윤", "서윤", "시우", "지우", "지호", "하은", "지훈", "지아", "길동", "철수", "영희", "진호", "희찬", "지한", "주은", "주찬", "시온","소여", "지민"};
         Random random = new Random();
 
         List<MemberEntity> members = new ArrayList<>();
         List<ParticipantEntity> participants = new ArrayList<>();
 
-        for (int i = 1; i <= 100000; i++) {
-            String randomName = lastNames[random.nextInt(lastNames.length)] + firstNames[random.nextInt(firstNames.length)];
-            // 이름 뒤에 숫자를 붙여 닉네임 중복 및 멘션 다양성 확보 (예: 김길동7, 이서연12)
-            String nickname = randomName + random.nextInt(1000);
-            String email = "test" + i + "@yellobook.com";
+        int globalMemberId = 1;
+        int totalInserted = 0;
 
-            MemberEntity member = new MemberEntity(
-                    nickname,
-                    "안녕하세요 " + nickname + "입니다.",
-                    email,
-                    null,
-                    "oauth_" + i,
-                    "KAKAO"
-            );
-            members.add(member);
+        // 3. 데이터 쏠림(Data Skew) 매핑: 상위 10개 팀은 30,000명, 나머지는 10명
+        for (int i = 0; i < teams.size(); i++) {
+            TeamEntity savedTeam = teams.get(i);
+
+            // ⭐️ 핵심 로직: 인덱스 0~9(1~10번 팀)는 3만 명 배정, 나머지는 10명 배정
+            int memberCountForThisTeam = (i < 10) ? 30000 : 10;
+
+            for (int m = 1; m <= memberCountForThisTeam; m++) {
+                String randomName = lastNames[random.nextInt(lastNames.length)] + firstNames[random.nextInt(firstNames.length)];
+                String nickname = randomName + random.nextInt(1000);
+                String email = "test" + globalMemberId + "@yellobook.com";
+
+                MemberEntity member = new MemberEntity(
+                        nickname,
+                        "안녕하세요 " + nickname + "입니다.",
+                        email,
+                        null,
+                        "oauth_" + globalMemberId,
+                        "KAKAO"
+                );
+                members.add(member);
+
+                ParticipantEntity participant = new ParticipantEntity(
+                        savedTeam,
+                        member,
+                        TeamMemberRole.ORDERER
+                );
+                participants.add(participant);
+
+                globalMemberId++;
+                totalInserted++;
+
+                // 1만 건이 쌓일 때마다 DB에 털어내고 메모리를 비움
+                if (members.size() >= 10000) {
+                    memberRepository.saveAll(members);
+                    participantRepository.saveAll(participants);
+                    members.clear();
+                    participants.clear();
+                    log.info("... {}건 데이터 삽입 진행 중 ...", totalInserted);
+                }
+            }
         }
 
-        // saveAll을 사용하여 Bulk Insert (JPA 성능 최적화)
-        memberRepository.saveAll(members);
-
-        // 3. 생성된 유저들을 방금 만든 팀에 전부 소속시킴
-        for (MemberEntity member : members) {
-            ParticipantEntity participant = new ParticipantEntity(
-                    team,
-                    member,
-                    TeamMemberRole.ORDERER
-            );
-            participants.add(participant);
+        // 4. 마지막 루프를 돌고 남아있는 찌꺼기 데이터들 최종 저장
+        if (!members.isEmpty()) {
+            memberRepository.saveAll(members);
+            participantRepository.saveAll(participants);
         }
-        participantRepository.saveAll(participants);
 
         long endTime = System.currentTimeMillis();
-        log.info("성공적으로 100,000명의 유저와 팀 매핑 데이터를 삽입했습니다. (소요 시간: {}ms)", (endTime - startTime));
+        log.info("🔥 대성공! 1,000개의 팀과 총 {}명의 극단적 쏠림 데이터를 삽입했습니다. (소요 시간: {}ms)", totalInserted, (endTime - startTime));
     }
 }

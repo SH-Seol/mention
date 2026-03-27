@@ -34,7 +34,7 @@ public class TeamService {
         List<QueryTeamMember> mentions = participantRepository.findMentionsByNamePrefix(name, teamId);
         long end = System.currentTimeMillis();
 
-        log.info("검색 완료 - 찾은 인원: {}명, 소요 시간: {}ms", mentions.size(), end - start);
+        log.info("검색 완료 - 팀 id: {} 찾은 인원: {}명, 소요 시간: {}ms", teamId, mentions.size(), end - start);
 
         //mentions가 null인 경우, emptyList를 반환하도록 설정
         return teamMapper.toTeamMemberListResponse(
@@ -57,7 +57,7 @@ public class TeamService {
         List<QueryTeamMember> filtered = redisRepository.findMentionsByPrefixWithRedis(teamId, name);
 
         long end = System.currentTimeMillis();
-        log.info("redis 검색 완료 - 찾은 인원: {}명, 소요 시간: {}ms", filtered.size(), end - start);
+        log.info("redis 검색 완료 - 팀 id: {}, 찾은 인원: {}명, 소요 시간: {}ms", teamId, filtered.size(), end - start);
         return teamMapper.toTeamMemberListResponse(
                 Objects.requireNonNullElse(filtered, List.of())
         );
