@@ -66,10 +66,10 @@ public class DummyDataInitializer implements CommandLineRunner {
         List<MemberEntity> members = new ArrayList<>();
         List<ParticipantEntity> participants = new ArrayList<>();
 
-        for (int i = 1; i <= 10000; i++) {
+        for (int i = 1; i <= 100000; i++) {
             String randomName = lastNames[random.nextInt(lastNames.length)] + firstNames[random.nextInt(firstNames.length)];
             // 이름 뒤에 숫자를 붙여 닉네임 중복 및 멘션 다양성 확보 (예: 김길동7, 이서연12)
-            String nickname = randomName + random.nextInt(100);
+            String nickname = randomName + random.nextInt(1000);
             String email = "test" + i + "@yellobook.com";
 
             MemberEntity member = new MemberEntity(
@@ -98,6 +98,6 @@ public class DummyDataInitializer implements CommandLineRunner {
         participantRepository.saveAll(participants);
 
         long endTime = System.currentTimeMillis();
-        log.info("성공적으로 10,000명의 유저와 팀 매핑 데이터를 삽입했습니다. (소요 시간: {}ms)", (endTime - startTime));
+        log.info("성공적으로 100,000명의 유저와 팀 매핑 데이터를 삽입했습니다. (소요 시간: {}ms)", (endTime - startTime));
     }
 }

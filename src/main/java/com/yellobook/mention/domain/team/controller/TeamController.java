@@ -26,4 +26,13 @@ public class TeamController {
         TeamMemberListResponse response = teamService.searchParticipants(teamId, name);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/members/redis/search")
+    public ResponseEntity<TeamMemberListResponse> searchMembersWithRedis(
+            @RequestParam("name") String name,
+            Long teamId
+    ){
+        TeamMemberListResponse response = teamService.searchParticipantsWithRedis(teamId, name);
+        return ResponseEntity.ok(response);
+    }
 }

@@ -34,5 +34,23 @@ public class ParticipantCustomRepositoryImpl implements ParticipantCustomReposit
                         .and(participant.team.id.eq(teamId)))
                 .fetch();
     }
+
+    @Override
+    public List<QueryTeamMember> findParticipants(Long teamId){
+        QMemberEntity member = QMemberEntity.memberEntity;
+        QParticipantEntity participant = QParticipantEntity.participantEntity;
+
+        return queryFactory
+                .select(
+                        Projections.constructor(QueryTeamMember.class,
+                                member.id,
+                                member.nickname
+                        )
+                )
+                .from(participant)
+                .join(participant.member, member)
+                .where(participant.team.id.eq(teamId))
+                .fetch();
+    }
 }
 
