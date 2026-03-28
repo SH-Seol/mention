@@ -17,6 +17,7 @@ import com.yellobook.mention.domain.team.entity.ParticipantEntity;
 import com.yellobook.mention.domain.team.entity.TeamEntity;
 import com.yellobook.mention.domain.team.repository.ParticipantRepository;
 import com.yellobook.mention.domain.team.repository.TeamRepository;
+import com.yellobook.mention.domain.team.service.ParticipantSyncService;
 
 @Component
 public class DummyDataInitializer implements CommandLineRunner {
@@ -26,13 +27,16 @@ public class DummyDataInitializer implements CommandLineRunner {
     private final TeamRepository teamRepository;
     private final MemberRepository memberRepository;
     private final ParticipantRepository participantRepository;
+    private final ParticipantSyncService participantSyncService;
 
     public DummyDataInitializer(TeamRepository teamRepository,
                                 MemberRepository memberRepository,
-                                ParticipantRepository participantRepository) {
+                                ParticipantRepository participantRepository,
+                                ParticipantSyncService participantSyncService) {
         this.teamRepository = teamRepository;
         this.memberRepository = memberRepository;
         this.participantRepository = participantRepository;
+        this.participantSyncService = participantSyncService;
     }
 
     @Override
@@ -41,6 +45,7 @@ public class DummyDataInitializer implements CommandLineRunner {
         // 이미 데이터가 있다면 실행하지 않음 (팀 기준으로 체크)
         if (teamRepository.count() > 0) {
             log.info("이미 더미 데이터가 존재하여 초기화를 건너뜁니다. (다시 세팅하려면 DB를 비워주세요!)");
+            participantSyncService.sync();
             return;
         }
 
@@ -77,7 +82,7 @@ public class DummyDataInitializer implements CommandLineRunner {
         for (int i = 0; i < teams.size(); i++) {
             TeamEntity savedTeam = teams.get(i);
 
-            // ⭐️ 핵심 로직: 인덱스 0~9(1~10번 팀)는 3만 명 배정, 나머지는 10명 배정
+            // 인덱스 0~9(1~10번 팀)는 3만 명 배정, 나머지는 10명 배정
             int memberCountForThisTeam = (i < 10) ? 30000 : 10;
 
             for (int m = 1; m <= memberCountForThisTeam; m++) {
@@ -124,5 +129,8 @@ public class DummyDataInitializer implements CommandLineRunner {
 
         long endTime = System.currentTimeMillis();
         log.info("🔥 대성공! 1,000개의 팀과 총 {}명의 극단적 쏠림 데이터를 삽입했습니다. (소요 시간: {}ms)", totalInserted, (endTime - startTime));
+
+        log.info("이어서 Elasticsearch로의 데이터 동기화를 시작합니다...");
+        participantSyncService.sync();
     }
 }

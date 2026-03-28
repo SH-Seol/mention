@@ -2,6 +2,7 @@ package com.yellobook.mention.domain.team.repository;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import com.querydsl.core.types.Projections;
@@ -19,7 +20,7 @@ public class ParticipantCustomRepositoryImpl implements ParticipantCustomReposit
     }
 
     @Override
-    public List<QueryTeamMember> findMentionsByNamePrefix(String prefix, Long teamId) {
+    public List<QueryTeamMember> findMentionsByNamePrefix(String prefix, Long teamId, Pageable pageable) {
         QMemberEntity member = QMemberEntity.memberEntity;
         QParticipantEntity participant = QParticipantEntity.participantEntity;
 
@@ -32,6 +33,8 @@ public class ParticipantCustomRepositoryImpl implements ParticipantCustomReposit
                 .join(participant.member, member)
                 .where(member.nickname.like("%"+ prefix + "%")
                         .and(participant.team.id.eq(teamId)))
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
                 .fetch();
     }
 

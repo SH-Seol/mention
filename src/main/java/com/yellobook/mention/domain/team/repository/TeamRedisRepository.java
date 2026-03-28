@@ -5,7 +5,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -51,12 +53,17 @@ public void saveAllToZSet(Long teamId, List<QueryTeamMember> members){
     }
 
     // 3. 접두사로 사전순 검색
-    public List<QueryTeamMember> findMentionsByPrefixWithRedis(Long teamId, String prefix){
+    public List<QueryTeamMember> findMentionsByPrefixWithRedis(Long teamId, String prefix, Pageable pageable){
         String key = String.format(MENTION_PREFIX, teamId);
         ZSetOperations<String, String> zSetOps = stringRedisTemplate.opsForZSet();
 
         Range<String> range = Range.closed(prefix, prefix + LAST_UNICODE);
-        Set<String> result = zSetOps.rangeByLex(key, range);
+
+        Limit limit = Limit.limit()
+                .offset((int) pageable.getOffset())
+                .count(pageable.getPageSize());
+
+        Set<String> result = zSetOps.rangeByLex(key, range, limit);
 
         //값이 없는 경우 빈 리스트 반환
         if(result == null || result.isEmpty()){

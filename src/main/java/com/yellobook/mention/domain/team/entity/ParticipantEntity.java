@@ -44,6 +44,18 @@ public class ParticipantEntity extends BaseEntity {
         this.teamMemberRole = teamMemberRole;
     }
 
+    public TeamEntity getTeam() {
+        return team;
+    }
+
+    public MemberEntity getMember() {
+        return member;
+    }
+
+    public TeamMemberRole getTeamMemberRole() {
+        return teamMemberRole;
+    }
+
     private void isValid(TeamEntity team, MemberEntity member, TeamMemberRole role) {
         if (team == null || member == null || role == null) {
             throw new IllegalArgumentException("null값이 존재합니다.");
