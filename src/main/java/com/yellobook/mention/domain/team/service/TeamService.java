@@ -3,6 +3,7 @@ package com.yellobook.mention.domain.team.service;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +32,9 @@ public class TeamService {
     private static final Logger log = LoggerFactory.getLogger(TeamService.class);
     private static final int PAGESIZE = 500;
 
+    private final AtomicLong hitCount = new AtomicLong(0);
+    private final AtomicLong missCount = new AtomicLong(0);
+
     public TeamService(TeamMapper teamMapper, ParticipantCustomRepository participantRepository
     , TeamRedisRepository redisRepository, ParticipantEsRepository participantEsRepository
     , ElasticsearchOperations esOperations) {
@@ -46,6 +50,7 @@ public class TeamService {
 
         Pageable pageable = PageRequest.of(0, PAGESIZE);
         List<QueryTeamMember> mentions = participantRepository.findMentionsByNamePrefix(name, teamId, pageable);
+
         long end = System.currentTimeMillis();
 
         log.info("검색 완료 - 팀 id: {} 찾은 인원: {}명, 소요 시간: {}ms", teamId, mentions.size(), end - start);
@@ -66,14 +71,22 @@ public class TeamService {
 
         // cache miss인 경우 db를 조회하여 모든 값을 redis에 저장한다.
         if(!hasCache){
+            missCount.incrementAndGet();
             List<QueryTeamMember> members = participantRepository.findParticipants(teamId);
             redisRepository.saveAllToZSet(teamId, members);
         }
+        else{
+            hitCount.incrementAndGet();
+        }
+
+        double totalRequests = hitCount.get() + missCount.get();
+        double hitRatio = (hitCount.get() / totalRequests) * 100.0;
+
         // redis에서 값을 가져온다.
         List<QueryTeamMember> filtered = redisRepository.findMentionsByPrefixWithRedis(teamId, name, pageable);
 
         long end = System.currentTimeMillis();
-        log.info("redis 검색 완료 - 팀 id: {}, 찾은 인원: {}명, 소요 시간: {}ms", teamId, filtered.size(), end - start);
+        log.info("redis 검색 완료 - 팀 id: {}, 찾은 인원: {}명, 소요 시간: {}ms, hit ratio: {}%", teamId, filtered.size(), end - start, hitRatio);
         return teamMapper.toTeamMemberListResponse(
                 Objects.requireNonNullElse(filtered, List.of())
         );

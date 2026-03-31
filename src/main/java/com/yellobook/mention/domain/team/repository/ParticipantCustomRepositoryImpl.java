@@ -31,8 +31,9 @@ public class ParticipantCustomRepositoryImpl implements ParticipantCustomReposit
                 ))
                 .from(participant)
                 .join(participant.member, member)
-                .where(member.nickname.like("%"+ prefix + "%")
+                .where(member.nickname.startsWith(prefix)
                         .and(participant.team.id.eq(teamId)))
+                .orderBy(member.nickname.asc())
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
                 .fetch();
